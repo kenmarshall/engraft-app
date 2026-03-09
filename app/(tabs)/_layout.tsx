@@ -1,35 +1,77 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors, FontSizes, Spacing, TouchTarget } from '@/constants/theme';
+import { Strings } from '@/constants/strings';
+import { TabIcon } from '@/components/TabIcon';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarStyle: [
+          styles.tabBar,
+          { paddingBottom: Math.max(insets.bottom, Spacing.sm) },
+        ],
+        tabBarActiveTintColor: Colors.accent,
+        tabBarInactiveTintColor: Colors.textTertiary,
+        tabBarLabelStyle: styles.tabLabel,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: Strings.tabs.home,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="home" color={color} focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="review"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: Strings.tabs.review,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="book-open" color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="add"
+        options={{
+          title: Strings.tabs.add,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="plus-circle" color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="deck"
+        options={{
+          title: Strings.tabs.deck,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="layers" color={color} focused={focused} />
+          ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: Colors.tabBar,
+    borderTopColor: Colors.tabBarBorder,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    height: TouchTarget + Spacing.lg,
+    paddingTop: Spacing.xs,
+  },
+  tabLabel: {
+    fontSize: FontSizes.xs,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+});

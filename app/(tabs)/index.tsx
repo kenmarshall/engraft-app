@@ -1,98 +1,372 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+/**
+ * Home Screen
+ *
+ * Shows:
+ * - Cards due today count with a quick-start review button
+ * - Recent verses added to the deck
+ * - Empty state when no verses exist
+ */
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { Colors, FontSizes, FontWeights, Fonts, Spacing, Radii, Shadows, TouchTarget } from '@/constants/theme';
+import { Strings } from '@/constants/strings';
+import { loadDeck, getDueCards, type VerseCard } from '@/utils/storage';
+import { formatReference } from '@/utils/bible';
+import { getMasteryLevel, formatDueDate } from '@/utils/sm2';
+import { MasteryBadge } from '@/components/MasteryBadge';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
+  const [deck, setDeck] = useState<VerseCard[]>([]);
+  const [dueCount, setDueCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const loadData = useCallback(async () => {
+    try {
+      const [allCards, dueCards] = await Promise.all([
+        loadDeck(),
+        getDueCards(),
+      ]);
+      setDeck(allCards.slice().reverse()); // Most recent first
+      setDueCount(dueCards.length);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Reload on every focus (e.g. after adding a verse)
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadData();
+    }, [loadData]),
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadData();
+  }, [loadData]);
+
+  const handleStartReview = () => {
+    router.push('/(tabs)/review');
+  };
+
+  const handleAddVerse = () => {
+    router.push('/(tabs)/add');
+  };
+
+  const handleVersePress = (card: VerseCard) => {
+    router.push(`/verse/${card.id}`);
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator color={Colors.accent} size="large" />
+          <Text style={styles.loadingText}>{Strings.common.loading}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const hasDeck = deck.length > 0;
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.accent}
+          />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.appName}>{Strings.appName}</Text>
+          <Text style={styles.tagline}>{Strings.tagline}</Text>
+        </View>
+
+        {/* Due Today Card */}
+        <View style={[styles.dueCard, dueCount === 0 && styles.dueCardEmpty]}>
+          <Text style={[styles.dueLabel, dueCount === 0 && styles.dueLabelEmpty]}>
+            {Strings.home.dueToday}
+          </Text>
+          <Text style={[styles.dueCount, dueCount === 0 && styles.dueCountEmpty]}>
+            {hasDeck ? Strings.home.dueCard(dueCount) : '–'}
+          </Text>
+
+          {hasDeck && dueCount > 0 && (
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={handleStartReview}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={Strings.home.startReview}
+            >
+              <Text style={styles.startButtonText}>{Strings.home.startReview}</Text>
+            </TouchableOpacity>
+          )}
+
+          {hasDeck && dueCount === 0 && (
+            <Text style={styles.caughtUpBody}>{Strings.home.noDueCardsBody}</Text>
+          )}
+        </View>
+
+        {/* Verse list or Empty State */}
+        {!hasDeck ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>{Strings.home.emptyTitle}</Text>
+            <Text style={styles.emptyBody}>{Strings.home.emptyBody}</Text>
+            <TouchableOpacity
+              style={styles.emptyAction}
+              onPress={handleAddVerse}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+            >
+              <Text style={styles.emptyActionText}>{Strings.home.emptyAction}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.sectionTitle}>{Strings.home.recentVerses}</Text>
+            {deck.slice(0, 10).map((card) => (
+              <TouchableOpacity
+                key={card.id}
+                style={styles.verseRow}
+                onPress={() => handleVersePress(card)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={formatReference(card.book, card.chapter, card.verse)}
+              >
+                <View style={styles.verseRowLeft}>
+                  <Text style={styles.verseRef}>
+                    {formatReference(card.book, card.chapter, card.verse)}
+                  </Text>
+                  <Text style={styles.versePreview} numberOfLines={2}>
+                    {card.text}
+                  </Text>
+                </View>
+                <View style={styles.verseRowRight}>
+                  <MasteryBadge level={getMasteryLevel(card.schedule)} />
+                  <Text style={styles.dueDateText}>
+                    {formatDueDate(card.schedule.dueDate)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: Spacing.base,
+    paddingBottom: Spacing.xxxl,
+  },
+  loadingContainer: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    gap: Spacing.md,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  loadingText: {
+    fontSize: FontSizes.base,
+    color: Colors.textSecondary,
+    fontFamily: Fonts.sans,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+
+  // Header
+  header: {
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.lg,
+  },
+  appName: {
+    fontSize: FontSizes.display,
+    fontWeight: FontWeights.bold,
+    color: Colors.text,
+    fontFamily: Fonts.serif,
+    letterSpacing: -0.5,
+  },
+  tagline: {
+    fontSize: FontSizes.sm,
+    color: Colors.textSecondary,
+    fontFamily: Fonts.sans,
+    marginTop: Spacing.xxs,
+    fontStyle: 'italic',
+  },
+
+  // Due Card
+  dueCard: {
+    backgroundColor: Colors.accent,
+    borderRadius: Radii.lg,
+    padding: Spacing.xl,
+    marginBottom: Spacing.xl,
+    ...Shadows.card,
+  },
+  dueCardEmpty: {
+    backgroundColor: Colors.accentLight,
+  },
+  dueLabel: {
+    fontSize: FontSizes.xs,
+    color: Colors.card,
+    fontFamily: Fonts.sans,
+    fontWeight: FontWeights.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    opacity: 0.85,
+  },
+  dueLabelEmpty: {
+    color: Colors.accent,
+    opacity: 1,
+  },
+  dueCount: {
+    fontSize: FontSizes.xxl,
+    fontWeight: FontWeights.bold,
+    color: Colors.card,
+    fontFamily: Fonts.sans,
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.lg,
+  },
+  dueCountEmpty: {
+    color: Colors.accent,
+  },
+  startButton: {
+    backgroundColor: Colors.card,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: Radii.full,
+    alignSelf: 'flex-start',
+    minHeight: TouchTarget,
+    justifyContent: 'center',
+  },
+  startButtonText: {
+    color: Colors.accent,
+    fontSize: FontSizes.base,
+    fontWeight: FontWeights.semibold,
+    fontFamily: Fonts.sans,
+  },
+  caughtUpBody: {
+    fontSize: FontSizes.sm,
+    color: Colors.accent,
+    fontFamily: Fonts.sans,
+    opacity: 0.8,
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xxxl,
+    paddingHorizontal: Spacing.lg,
+  },
+  emptyTitle: {
+    fontSize: FontSizes.xl,
+    fontWeight: FontWeights.semibold,
+    color: Colors.text,
+    fontFamily: Fonts.serif,
+    textAlign: 'center',
+    marginBottom: Spacing.md,
+  },
+  emptyBody: {
+    fontSize: FontSizes.base,
+    color: Colors.textSecondary,
+    fontFamily: Fonts.sans,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.xl,
+  },
+  emptyAction: {
+    backgroundColor: Colors.accent,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xxl,
+    borderRadius: Radii.full,
+    minHeight: TouchTarget,
+    justifyContent: 'center',
+  },
+  emptyActionText: {
+    color: Colors.card,
+    fontSize: FontSizes.base,
+    fontWeight: FontWeights.semibold,
+    fontFamily: Fonts.sans,
+  },
+
+  // Section
+  sectionTitle: {
+    fontSize: FontSizes.xs,
+    fontWeight: FontWeights.semibold,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontFamily: Fonts.sans,
+    marginBottom: Spacing.md,
+  },
+
+  // Verse Row
+  verseRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: Colors.card,
+    borderRadius: Radii.md,
+    padding: Spacing.base,
+    marginBottom: Spacing.sm,
+    minHeight: TouchTarget,
+    ...Shadows.card,
+  },
+  verseRowLeft: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  verseRef: {
+    fontSize: FontSizes.base,
+    fontWeight: FontWeights.semibold,
+    color: Colors.text,
+    fontFamily: Fonts.sans,
+    marginBottom: Spacing.xs,
+  },
+  versePreview: {
+    fontSize: FontSizes.sm,
+    color: Colors.textSecondary,
+    fontFamily: Fonts.serif,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  verseRowRight: {
+    alignItems: 'flex-end',
+    gap: Spacing.xs,
+  },
+  dueDateText: {
+    fontSize: FontSizes.xs,
+    color: Colors.textTertiary,
+    fontFamily: Fonts.sans,
+    marginTop: Spacing.xs,
   },
 });
