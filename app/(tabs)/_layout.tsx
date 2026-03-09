@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, FontSizes, Spacing, TouchTarget } from '@/constants/theme';
 import { Strings } from '@/constants/strings';
@@ -56,6 +56,11 @@ export default function TabLayout() {
             <TabIcon name="layers" color={color} focused={focused} />
           ),
         }}
+      />
+      {/* explore.tsx exists from boilerplate — hidden from tab bar */}
+      <Tabs.Screen
+        name="explore"
+        options={{ href: null }}
       />
     </Tabs>
   );

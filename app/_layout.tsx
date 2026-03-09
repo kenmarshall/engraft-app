@@ -1,6 +1,8 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from '@/constants/theme';
 
 export const unstable_settings = {
@@ -9,27 +11,29 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   return (
-    <View style={styles.root}>
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: Colors.background },
-          headerTintColor: Colors.text,
-          headerShadowVisible: false,
-          contentStyle: { backgroundColor: Colors.background },
-        }}
-      >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="verse/[id]"
-          options={{
-            title: '',
-            headerBackTitle: 'Deck',
-            presentation: 'card',
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: Colors.background },
+            headerTintColor: Colors.text,
+            headerShadowVisible: false,
+            contentStyle: { backgroundColor: Colors.background },
           }}
-        />
-      </Stack>
-      <StatusBar style="dark" />
-    </View>
+        >
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="verse/[id]"
+            options={{
+              title: '',
+              headerBackTitle: 'Deck',
+              presentation: 'card',
+            }}
+          />
+        </Stack>
+        <StatusBar style="dark" />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
