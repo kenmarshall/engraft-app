@@ -4,6 +4,8 @@ import { StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from '@/constants/theme';
+import { Strings } from '@/constants/strings';
+import { ProProvider } from '@/contexts/ProContext';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -13,6 +15,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
+        <ProProvider>
         <Stack
           screenOptions={{
             headerStyle: { backgroundColor: Colors.background },
@@ -26,12 +29,29 @@ export default function RootLayout() {
             name="verse/[id]"
             options={{
               title: '',
-              headerBackTitle: 'Deck',
+              headerBackTitle: 'Back',
+              presentation: 'card',
+            }}
+          />
+          <Stack.Screen
+            name="deck/[id]"
+            options={{
+              title: '',
+              headerBackTitle: 'Back',
+              presentation: 'card',
+            }}
+          />
+          <Stack.Screen
+            name="settings"
+            options={{
+              title: Strings.settings.title,
+              headerBackTitle: 'Back',
               presentation: 'card',
             }}
           />
         </Stack>
         <StatusBar style="dark" />
+        </ProProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -27,10 +27,10 @@ import {
   Spacing, Radii, Shadows, TouchTarget,
 } from '@/constants/theme';
 import { Strings } from '@/constants/strings';
-import { getDueCards, updateCardSchedule, type VerseCard } from '@/utils/storage';
-import { formatReference } from '@/utils/bible';
+import { getDueCards, updateCardSchedule, getDifficulty, type VerseCard, type ClozeDifficulty } from '@/utils/storage';
+import { formatReference, formatReferenceRange } from '@/utils/bible';
 import { scheduleCard, type Rating } from '@/utils/sm2';
-import { generateCloze, type ClozeResult } from '@/utils/cloze';
+import { generateCloze, getBlankPlaceholder, type ClozeResult } from '@/utils/cloze';
 
 interface RatingButtonConfig {
   rating: Rating;
@@ -56,6 +56,8 @@ export default function ReviewScreen() {
   const [showRating, setShowRating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
+  const [isRating, setIsRating] = useState(false);
+  const difficultyRef = React.useRef<ClozeDifficulty>('medium');
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -64,10 +66,11 @@ export default function ReviewScreen() {
     setRevealed(new Set());
     setShowRating(false);
     try {
-      const due = await getDueCards();
+      const [due, difficulty] = await Promise.all([getDueCards(), getDifficulty()]);
+      difficultyRef.current = difficulty;
       setQueue(due);
       if (due.length > 0) {
-        setCloze(generateCloze(due[0].text));
+        setCloze(generateCloze(due[0].text, 0, difficulty));
       }
     } finally {
       setLoading(false);
@@ -86,6 +89,10 @@ export default function ReviewScreen() {
     setRevealed((prev) => {
       const next = new Set(prev);
       next.add(blankIndex);
+      // Auto-show rating buttons once the user has revealed every blank manually
+      if (cloze && cloze.blankIndices.every((i) => next.has(i))) {
+        setShowRating(true);
+      }
       return next;
     });
   };
@@ -97,10 +104,15 @@ export default function ReviewScreen() {
   };
 
   const handleRate = async (rating: Rating) => {
-    if (!currentCard) return;
+    if (!currentCard || isRating) return;
+    setIsRating(true);
 
     const updatedSchedule = scheduleCard(currentCard.schedule, rating);
-    await updateCardSchedule(currentCard.id, updatedSchedule);
+    try {
+      await updateCardSchedule(currentCard.id, updatedSchedule);
+    } catch {
+      // Storage failure — continue review session; schedule will sync on next load
+    }
 
     const nextIndex = currentIndex + 1;
     if (nextIndex >= queue.length) {
@@ -110,7 +122,8 @@ export default function ReviewScreen() {
       setCurrentIndex(nextIndex);
       setRevealed(new Set());
       setShowRating(false);
-      setCloze(generateCloze(nextCard.text));
+      setIsRating(false);
+      setCloze(generateCloze(nextCard.text, 0, difficultyRef.current));
     }
   };
 
@@ -173,10 +186,6 @@ export default function ReviewScreen() {
 
   if (!currentCard || !cloze) return null;
 
-  const allBlanksRevealed =
-    cloze.blankIndices.length === 0 ||
-    cloze.blankIndices.every((i) => revealed.has(i));
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       {/* Progress bar */}
@@ -201,7 +210,9 @@ export default function ReviewScreen() {
 
         {/* Reference */}
         <Text style={styles.reference}>
-          {formatReference(currentCard.book, currentCard.chapter, currentCard.verse)}
+          {currentCard.endVerse
+            ? formatReferenceRange(currentCard.book, currentCard.chapter, currentCard.verse, currentCard.endVerse)
+            : formatReference(currentCard.book, currentCard.chapter, currentCard.verse)}
         </Text>
 
         {/* Cloze Card */}
@@ -244,11 +255,12 @@ export default function ReviewScreen() {
               {RATING_BUTTONS.map(({ rating, label, hint, color }) => (
                 <TouchableOpacity
                   key={rating}
-                  style={[styles.ratingButton, { borderColor: color }]}
+                  style={[styles.ratingButton, { borderColor: color }, isRating && styles.ratingButtonDisabled]}
                   onPress={() => handleRate(rating)}
                   activeOpacity={0.75}
                   accessibilityRole="button"
                   accessibilityLabel={`${label}: ${hint}`}
+                  disabled={isRating}
                 >
                   <Text style={[styles.ratingButtonLabel, { color }]}>{label}</Text>
                   <Text style={styles.ratingButtonHint}>{hint}</Text>
@@ -299,9 +311,9 @@ function ClozeText({ cloze, revealed, showRating, onRevealBlank }: ClozeTextProp
             key={token.index}
             onPress={() => onRevealBlank(token.index)}
             accessibilityRole="button"
-            accessibilityLabel={`Hidden word, tap to reveal`}
+            accessibilityLabel={Strings.review.blankAccessibility}
           >
-            <Text style={styles.blank}>{'_'.repeat(Math.max(3, Math.min(8, token.word.length)))}</Text>
+            <Text style={styles.blank}>{getBlankPlaceholder(token.word)}</Text>
             <Text style={styles.verseWord}>{token.trailing}</Text>
           </Text>
         );
@@ -463,6 +475,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Colors.card,
     ...Shadows.card,
+  },
+  ratingButtonDisabled: {
+    opacity: 0.4,
   },
   ratingButtonLabel: {
     fontSize: FontSizes.base,

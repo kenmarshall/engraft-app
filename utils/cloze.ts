@@ -89,10 +89,14 @@ const STOP_WORDS = new Set([
   ...AUXILIARIES,
 ]);
 
-// ── Target blank rate ──────────────────────────────────────────────────────
+// ── Target blank rates by difficulty ──────────────────────────────────────
 
-const MIN_BLANK_RATIO = 0.3;
-const MAX_BLANK_RATIO = 0.4;
+/** Blank ratio bounds for each difficulty level. */
+const DIFFICULTY_RATIOS = {
+  easy:   { min: 0.15, max: 0.25 },
+  medium: { min: 0.30, max: 0.40 },
+  hard:   { min: 0.45, max: 0.55 },
+} as const;
 
 // ── Tokenizer ─────────────────────────────────────────────────────────────
 
@@ -142,11 +146,16 @@ function isEligible(word: string): boolean {
 /**
  * Generate cloze deletions for a KJV verse.
  *
- * @param verseText  Full verse text
- * @param seed       Optional numeric seed for deterministic selection (default: 0)
+ * @param verseText   Full verse text
+ * @param seed        Optional numeric seed for deterministic selection (default: 0)
+ * @param difficulty  Blank density — 'easy' (~20%), 'medium' (~35%), 'hard' (~50%). Default: 'medium'
  * @returns ClozeResult with tokens and blank indices
  */
-export function generateCloze(verseText: string, seed: number = 0): ClozeResult {
+export function generateCloze(
+  verseText: string,
+  seed: number = 0,
+  difficulty: 'easy' | 'medium' | 'hard' = 'medium',
+): ClozeResult {
   const rawTokens = tokenize(verseText);
 
   // Build initial token list
@@ -162,10 +171,11 @@ export function generateCloze(verseText: string, seed: number = 0): ClozeResult 
     .filter((t) => isEligible(t.word))
     .map((t) => t.index);
 
-  // Determine how many blanks to create
+  // Determine how many blanks to create based on difficulty
+  const { min: minRatio, max: maxRatio } = DIFFICULTY_RATIOS[difficulty];
   const totalWords = tokens.length;
-  const targetMin = Math.ceil(totalWords * MIN_BLANK_RATIO);
-  const targetMax = Math.floor(totalWords * MAX_BLANK_RATIO);
+  const targetMin = Math.ceil(totalWords * minRatio);
+  const targetMax = Math.floor(totalWords * maxRatio);
   const targetCount = Math.min(
     eligibleIndices.length,
     Math.max(targetMin, Math.round((targetMin + targetMax) / 2)),

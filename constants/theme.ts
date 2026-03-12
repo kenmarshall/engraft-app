@@ -37,6 +37,8 @@ export const Colors = {
   blankUnderline: '#C8892A',
   /** Blank revealed text highlight */
   blankRevealBackground: '#FBF0DC',
+  /** Success action background (light green) */
+  successLight: '#EAF7EA',
 } as const;
 
 export const Fonts = {

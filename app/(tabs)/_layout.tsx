@@ -14,7 +14,10 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: [
           styles.tabBar,
-          { paddingBottom: Math.max(insets.bottom, Spacing.sm) },
+          {
+            height: TouchTarget + Spacing.lg + Math.max(insets.bottom, Spacing.sm),
+            paddingBottom: Math.max(insets.bottom, Spacing.sm),
+          },
         ],
         tabBarActiveTintColor: Colors.accent,
         tabBarInactiveTintColor: Colors.textTertiary,
@@ -71,7 +74,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.tabBar,
     borderTopColor: Colors.tabBarBorder,
     borderTopWidth: StyleSheet.hairlineWidth,
-    height: TouchTarget + Spacing.lg,
     paddingTop: Spacing.xs,
   },
   tabLabel: {

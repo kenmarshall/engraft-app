@@ -19,13 +19,15 @@ import {
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { Colors, FontSizes, FontWeights, Fonts, Spacing, Radii, Shadows, TouchTarget } from '@/constants/theme';
 import { Strings } from '@/constants/strings';
-import { loadDeck, getDueCards, type VerseCard } from '@/utils/storage';
+import { loadDeck, getDueCards, getHasSeenWelcome, setHasSeenWelcome, type VerseCard } from '@/utils/storage';
 import { formatReference } from '@/utils/bible';
 import { getMasteryLevel, formatDueDate } from '@/utils/sm2';
 import { MasteryBadge } from '@/components/MasteryBadge';
+import { WelcomeModal } from '@/components/WelcomeModal';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -33,8 +35,9 @@ export default function HomeScreen() {
   const [dueCount, setDueCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isFirstFocus = false) => {
     try {
       const [allCards, dueCards] = await Promise.all([
         loadDeck(),
@@ -42,6 +45,11 @@ export default function HomeScreen() {
       ]);
       setDeck(allCards.slice().reverse()); // Most recent first
       setDueCount(dueCards.length);
+
+      if (isFirstFocus) {
+        const seen = await getHasSeenWelcome();
+        if (!seen) setShowWelcome(true);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -49,10 +57,13 @@ export default function HomeScreen() {
   }, []);
 
   // Reload on every focus (e.g. after adding a verse)
+  const isFirstFocusRef = React.useRef(true);
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      loadData();
+      const first = isFirstFocusRef.current;
+      isFirstFocusRef.current = false;
+      loadData(first);
     }, [loadData]),
   );
 
@@ -71,6 +82,18 @@ export default function HomeScreen() {
 
   const handleVersePress = (card: VerseCard) => {
     router.push(`/verse/${card.id}`);
+  };
+
+  const handleWelcomeDismiss = async () => {
+    await setHasSeenWelcome();
+    setShowWelcome(false);
+    loadData();
+  };
+
+  const handleWelcomeAddFirst = async () => {
+    await setHasSeenWelcome();
+    setShowWelcome(false);
+    router.push('/(tabs)/add');
   };
 
   if (loading) {
@@ -102,8 +125,19 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.appName}>{Strings.appName}</Text>
-          <Text style={styles.tagline}>{Strings.tagline}</Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.appName}>{Strings.appName}</Text>
+            <Text style={styles.tagline}>{Strings.tagline}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => router.push('/settings')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={Strings.settings.title}
+          >
+            <Ionicons name="settings-outline" size={22} color={Colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         {/* Due Today Card */}
@@ -177,6 +211,12 @@ export default function HomeScreen() {
           </>
         )}
       </ScrollView>
+
+      <WelcomeModal
+        visible={showWelcome}
+        onAddFirst={handleWelcomeAddFirst}
+        onDismiss={handleWelcomeDismiss}
+      />
     </SafeAreaView>
   );
 }
@@ -209,6 +249,19 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: Spacing.xl,
     paddingBottom: Spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  settingsButton: {
+    width: TouchTarget,
+    height: TouchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.xs,
   },
   appName: {
     fontSize: FontSizes.display,

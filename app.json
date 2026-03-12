@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "engraft-app",
+    "name": "Engraft",
     "slug": "engraft-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,9 +9,13 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.engraft.app",
+      "buildNumber": "1"
     },
     "android": {
+      "package": "com.engraft.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -33,9 +37,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#F9F7F4",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#1C1C1E"
           }
         }
       ]

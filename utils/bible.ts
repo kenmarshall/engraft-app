@@ -39,6 +39,18 @@ function makeKey(book: string, chapter: number, verse: number): string {
 
 // ── Reference Parser ───────────────────────────────────────────────────────
 
+/** Resolve a split "prefix + name" book input to its canonical KJV name. */
+function resolveBook(prefix: string, name: string): string | null {
+  const rawBook = (prefix + name).toLowerCase().replace(/\s+/g, '');
+  const rawBookWithSpace = (prefix + ' ' + name).toLowerCase().trim().replace(/\s+/g, ' ');
+  return (
+    BOOK_ALIASES[rawBook] ??
+    BOOK_ALIASES[rawBookWithSpace] ??
+    BOOK_ALIASES[name.toLowerCase()] ??
+    null
+  );
+}
+
 /**
  * Known book name aliases for flexible user input.
  * Maps normalized user input → canonical KJV book name.
@@ -194,16 +206,7 @@ export function parseReference(input: string): ParsedReference | null {
 
   if (isNaN(chapter) || isNaN(verse)) return null;
 
-  // Normalize book name
-  const rawBook = (bookPrefix + bookName).toLowerCase().replace(/\s+/g, '');
-  const rawBookWithSpace = (bookPrefix + ' ' + bookName).toLowerCase().trim().replace(/\s+/g, ' ');
-
-  const canonical =
-    BOOK_ALIASES[rawBook] ??
-    BOOK_ALIASES[rawBookWithSpace] ??
-    BOOK_ALIASES[bookName.toLowerCase()] ??
-    null;
-
+  const canonical = resolveBook(bookPrefix, bookName);
   if (!canonical) return null;
 
   return { book: canonical, chapter, verse };
@@ -244,8 +247,140 @@ export function formatReference(
 }
 
 /**
+ * Format a passage reference for display: "John 3:1–5" or "Psalms 23" (whole chapter).
+ * Use endVerse = undefined for whole-chapter passages.
+ */
+export function formatReferenceRange(
+  book: string,
+  chapter: number,
+  verseStart: number,
+  verseEnd?: number,
+): string {
+  if (verseEnd === undefined || verseEnd === verseStart) {
+    return `${book} ${chapter}:${verseStart}`;
+  }
+  return `${book} ${chapter}:${verseStart}–${verseEnd}`;
+}
+
+/**
  * Get all verses in the dataset (for search/browse features).
  */
 export function getAllVerses(): KJVVerse[] {
   return VERSES;
+}
+
+/** Canonical ordered list of all 66 KJV book names. */
+const BOOK_NAMES: readonly string[] = [
+  'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy',
+  'Joshua', 'Judges', 'Ruth', '1 Samuel', '2 Samuel',
+  '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles', 'Ezra',
+  'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs',
+  'Ecclesiastes', 'Song of Solomon', 'Isaiah', 'Jeremiah', 'Lamentations',
+  'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos',
+  'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk',
+  'Zephaniah', 'Haggai', 'Zechariah', 'Malachi',
+  'Matthew', 'Mark', 'Luke', 'John', 'Acts',
+  'Romans', '1 Corinthians', '2 Corinthians', 'Galatians', 'Ephesians',
+  'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians',
+  '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews',
+  'James', '1 Peter', '2 Peter', '1 John', '2 John', '3 John',
+  'Jude', 'Revelation',
+];
+
+// ── Range / Chapter Lookup ──────────────────────────────────────────────────
+
+export interface ParsedRangeReference {
+  book: string;
+  chapter: number;
+  /** undefined means "whole chapter" */
+  verseStart?: number;
+  verseEnd?: number;
+}
+
+/**
+ * Parse a verse range or whole-chapter reference.
+ * Supported formats:
+ *   "Psalms 100"         → whole chapter
+ *   "John 3:1-5"         → verse range
+ *   "Romans 8:28-39"     → verse range
+ *
+ * Returns null if the reference cannot be parsed or if verseEnd < verseStart.
+ */
+export function parseRangeReference(input: string): ParsedRangeReference | null {
+  const trimmed = input.trim();
+
+  // Try "Book chapter:verseStart-verseEnd"
+  const rangeMatch = trimmed.match(
+    /^(\d\s*)?([A-Za-z]+(?:\s+[A-Za-z]+)*)\s+(\d+):(\d+)-(\d+)$/,
+  );
+  if (rangeMatch) {
+    const bookPrefix = rangeMatch[1] ? rangeMatch[1].trim() : '';
+    const bookName = rangeMatch[2].trim();
+    const chapter = parseInt(rangeMatch[3], 10);
+    const verseStart = parseInt(rangeMatch[4], 10);
+    const verseEnd = parseInt(rangeMatch[5], 10);
+    if (isNaN(chapter) || isNaN(verseStart) || isNaN(verseEnd)) return null;
+    if (verseEnd < verseStart) return null;
+    const canonical = resolveBook(bookPrefix, bookName);
+    if (!canonical) return null;
+    return { book: canonical, chapter, verseStart, verseEnd };
+  }
+
+  // Try "Book chapter" (whole chapter)
+  const chapterMatch = trimmed.match(
+    /^(\d\s*)?([A-Za-z]+(?:\s+[A-Za-z]+)*)\s+(\d+)$/,
+  );
+  if (chapterMatch) {
+    const bookPrefix = chapterMatch[1] ? chapterMatch[1].trim() : '';
+    const bookName = chapterMatch[2].trim();
+    const chapter = parseInt(chapterMatch[3], 10);
+    if (isNaN(chapter)) return null;
+    const canonical = resolveBook(bookPrefix, bookName);
+    if (!canonical) return null;
+    return { book: canonical, chapter };
+  }
+
+  return null;
+}
+
+/**
+ * Return all verses in a chapter, in verse order.
+ */
+export function lookupChapter(book: string, chapter: number): KJVVerse[] {
+  return VERSES
+    .filter((v) => v.book === book && v.chapter === chapter)
+    .sort((a, b) => a.verse - b.verse);
+}
+
+/**
+ * Return a range of verses within a chapter, inclusive.
+ * Clamps to available verses (will not error on out-of-range).
+ */
+export function lookupRange(
+  book: string,
+  chapter: number,
+  verseStart: number,
+  verseEnd: number,
+): KJVVerse[] {
+  return VERSES
+    .filter((v) => v.book === book && v.chapter === chapter && v.verse >= verseStart && v.verse <= verseEnd)
+    .sort((a, b) => a.verse - b.verse);
+}
+
+/**
+ * Return up to `limit` book names that match the query.
+ * Matches prefix first, then "contains", case-insensitively.
+ */
+export function suggestBooks(query: string, limit = 6): string[] {
+  const q = query.toLowerCase().trim();
+  if (!q) return [];
+
+  const prefixMatches = BOOK_NAMES.filter((b) =>
+    b.toLowerCase().startsWith(q),
+  );
+  const containsMatches = BOOK_NAMES.filter(
+    (b) => !b.toLowerCase().startsWith(q) && b.toLowerCase().includes(q),
+  );
+
+  return [...prefixMatches, ...containsMatches].slice(0, limit);
 }

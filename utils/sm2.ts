@@ -152,6 +152,17 @@ export function formatDueDate(dueDateIso: string, now: Date = new Date()): strin
   return due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+/**
+ * Format an "added on" date for display (e.g. "March 11, 2026").
+ */
+export function formatAddedDate(addedAtIso: string): string {
+  return new Date(addedAtIso).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 function startOfDay(date: Date): Date {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);

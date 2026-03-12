@@ -27,8 +27,8 @@ import {
 } from '@/constants/theme';
 import { Strings } from '@/constants/strings';
 import { getCard, removeCard, type VerseCard } from '@/utils/storage';
-import { formatReference } from '@/utils/bible';
-import { getMasteryLevel, formatDueDate, isDue } from '@/utils/sm2';
+import { formatReference, formatReferenceRange } from '@/utils/bible';
+import { getMasteryLevel, formatDueDate, formatAddedDate, isDue } from '@/utils/sm2';
 import { MasteryBadge } from '@/components/MasteryBadge';
 
 export default function VerseDetailScreen() {
@@ -105,7 +105,7 @@ export default function VerseDetailScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centered}>
           <Text style={styles.errorTitle}>{Strings.common.error}</Text>
-          <Text style={styles.errorBody}>Verse not found in your deck.</Text>
+          <Text style={styles.errorBody}>{Strings.verseDetail.notFound}</Text>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
@@ -121,11 +121,7 @@ export default function VerseDetailScreen() {
   const mastery = getMasteryLevel(card.schedule);
   const due = isDue(card.schedule);
   const dueDateLabel = formatDueDate(card.schedule.dueDate);
-  const addedDate = new Date(card.addedAt).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const addedDate = formatAddedDate(card.addedAt);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -136,7 +132,9 @@ export default function VerseDetailScreen() {
       >
         {/* Reference */}
         <Text style={styles.reference}>
-          {formatReference(card.book, card.chapter, card.verse)}
+          {card.endVerse
+            ? formatReferenceRange(card.book, card.chapter, card.verse, card.endVerse)
+            : formatReference(card.book, card.chapter, card.verse)}
         </Text>
 
         {/* Verse Text Card */}
