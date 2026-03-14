@@ -57,12 +57,14 @@ export default function HomeScreen() {
   }, []);
 
   // Reload on every focus (e.g. after adding a verse)
+  // Only show the full loading spinner on the very first mount — subsequent
+  // refocuses (back navigation) update silently so there's no flicker.
   const isFirstFocusRef = React.useRef(true);
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
       const first = isFirstFocusRef.current;
       isFirstFocusRef.current = false;
+      if (first) setLoading(true);
       loadData(first);
     }, [loadData]),
   );

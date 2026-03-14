@@ -219,7 +219,7 @@ export const Strings = {
     helpStep1Body: 'Go to the Add tab and type a reference like "John 3:16". Preview the text, then tap "Add to Memory".',
     helpStep2Title: '2. Review daily',
     helpStep2Body: 'Open the Home tab and tap "Start Review". Before you begin each card, say the reference aloud (e.g. "John 3:16"). Then fill in the blanks from memory — tap each blank to reveal it one at a time. After reciting the full text, say the reference aloud again. Ending with the reference locks it to the verse so you never forget where it comes from.',
-    helpStep3Title: '3. Rate yourself honestly',
+    helpStep3Title: '3. Rate your recall',
     helpStep3Body: '"Again" if you struggled, "Hard" for hesitation, "Good" for solid recall, "Easy" if it felt effortless. Cards space out as mastery grows.',
     helpStep4Title: '4. Track your progress',
     helpStep4Body: 'The Deck tab shows every verse with its mastery level — New, Learning, or Mature — and its next review date.',

@@ -15,10 +15,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Linking,
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -66,23 +66,18 @@ export default function SettingsScreen() {
   };
 
   const handlePrivacyPolicy = () => {
-    Linking.openURL(PRIVACY_POLICY_URL).catch(() => {});
+    WebBrowser.openBrowserAsync(PRIVACY_POLICY_URL).catch(() => {});
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centered}>
-          <ActivityIndicator color={Colors.accent} size="large" />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const currentDifficulty = DIFFICULTY_OPTIONS.find((o) => o.value === difficulty)!;
+  const currentDifficulty = DIFFICULTY_OPTIONS.find((o) => o.value === difficulty) ?? DIFFICULTY_OPTIONS[1];
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator color={Colors.accent} size="large" />
+        </View>
+      ) : (
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -199,6 +194,7 @@ export default function SettingsScreen() {
         </View>
 
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
