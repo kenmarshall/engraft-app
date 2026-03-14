@@ -3,17 +3,25 @@
     "version": ">= 16.0.0"
   },
   "build": {
+    "base": {
+      "env": {
+        "NPM_FLAGS": "--legacy-peer-deps"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal"
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "ios": {
         "simulator": false
       }
     },
     "production": {
+      "extends": "base",
       "autoIncrement": true
     }
   },

@@ -2,6 +2,12 @@
 
 > "These words shall be in thine heart" — Deuteronomy 6:6
 
+## Tech Imports
+
+@~/.claude/tech/react-native.md
+@~/.claude/tech/revenuecat.md
+@~/.claude/tech/jest-expo.md
+
 ## App Identity
 
 **Name:** Engraft

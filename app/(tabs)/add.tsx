@@ -36,7 +36,8 @@ import {
   type KJVVerse,
 } from '@/utils/bible';
 import { BookSuggestions } from '@/components/BookSuggestions';
-import { addCard, isInDeck, makeCardId, makeRangeCardId, addCardToDeck, loadDecks, type Deck } from '@/utils/storage';
+import { addCard, isInDeck, loadDeck, makeCardId, makeRangeCardId, addCardToDeck, loadDecks, type Deck } from '@/utils/storage';
+import { FREE_VERSE_LIMIT } from '@/constants/pro';
 import { useProStatus } from '@/contexts/ProContext';
 
 type SearchState =
@@ -113,8 +114,15 @@ export default function AddVerseScreen() {
 
   const handleAdd = async () => {
     if (!foundVerse) return;
-    const cardId = makeCardId(foundVerse.book, foundVerse.chapter, foundVerse.verse);
     try {
+      if (!isPro) {
+        const deck = await loadDeck();
+        if (deck.length >= FREE_VERSE_LIMIT) {
+          openPaywall();
+          return;
+        }
+      }
+      const cardId = makeCardId(foundVerse.book, foundVerse.chapter, foundVerse.verse);
       await addCard({
         id: cardId,
         book: foundVerse.book,
@@ -133,6 +141,13 @@ export default function AddVerseScreen() {
 
   const handleAddRange = async () => {
     if (foundVerses.length === 0) return;
+    if (!isPro) {
+      const deck = await loadDeck();
+      if (deck.length >= FREE_VERSE_LIMIT) {
+        openPaywall();
+        return;
+      }
+    }
     const first = foundVerses[0];
     const last = foundVerses[foundVerses.length - 1];
     const passageId = makeRangeCardId(first.book, first.chapter, first.verse, last.verse);

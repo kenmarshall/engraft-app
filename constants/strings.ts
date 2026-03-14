@@ -80,8 +80,8 @@ export const Strings = {
     rangePreview: (count: number) => `${count} verses`,
     chapterPreview: (book: string, chapter: number) => `${book} ${chapter}`,
     verseCount: (n: number) => (n === 1 ? '1 verse' : `${n} verses`),
-    rangeGatedTitle: 'Pro Feature',
-    rangeGatedBody: 'Adding verses by range or chapter — like "John 3:1-5" or "Psalms 23" — is available in Engraft Pro.',
+    rangeGatedTitle: 'Disciple Feature',
+    rangeGatedBody: 'Adding verses by range or chapter — like "John 3:1-5" or "Psalms 23" — is available in Engraft Disciple.',
   },
 
   // ── Deck Screen ───────────────────────────────────────────────────────────
@@ -111,19 +111,23 @@ export const Strings = {
     deckCount: (count: number) => (count === 1 ? '1 deck' : `${count} decks`),
   },
 
-  // ── Pro / Paywall ──────────────────────────────────────────────────────────
+  // ── Disciple / Paywall ────────────────────────────────────────────────────
   pro: {
-    paywallTitle: 'Engraft Pro',
+    paywallTitle: 'Engraft Disciple',
     paywallSubtitle: 'Deepen your scripture practice with powerful tools for organized study.',
-    paywallAction: 'Upgrade to Pro',
+    paywallAction: 'Become a Disciple',
     paywallDismiss: 'Maybe Later',
-    badge: 'PRO',
-    lockedFeature: 'Pro Feature',
+    badge: 'DISCIPLE',
+    lockedFeature: 'Disciple Feature',
 
     // Feature list shown in paywall
-    feature1: 'Multiple named decks',
-    feature2: 'Add verses by range or chapter',
-    feature3: 'Organize scripture by topic or study',
+    feature1: 'Unlimited verses',
+    feature2: 'Multiple named decks',
+    feature3: 'Add verses by range or chapter',
+
+    // Verse limit
+    verseLimitTitle: 'Verse Limit Reached',
+    verseLimitBody: 'Free accounts can store up to 15 verses. Become a Disciple for unlimited verses, named decks, and verse ranges.',
 
     // Package selection
     paywallMonthly: 'Monthly',
@@ -142,7 +146,7 @@ export const Strings = {
     paywallRestore: 'Restore Purchases',
     paywallRestoring: 'Restoring…',
     paywallRestoredNoneTitle: 'No Purchase Found',
-    paywallRestoredNone: 'No previous Engraft Pro purchase was found for this account.',
+    paywallRestoredNone: 'No previous Engraft Disciple purchase was found for this account.',
 
     // Fine print
     paywallTerms: 'Recurring billing. Cancel anytime in your device Settings.',
@@ -203,9 +207,9 @@ export const Strings = {
     difficultyHardHint: '~50% of words hidden',
 
     // Account
-    upgradePro: 'Upgrade to Pro',
+    upgradePro: 'Become a Disciple',
     upgradeProSub: 'Verse ranges, named decks, and more',
-    proActive: 'Engraft Pro',
+    proActive: 'Engraft Disciple',
     proActiveSub: 'All features unlocked',
     manageSubscription: 'Manage Subscription',
 

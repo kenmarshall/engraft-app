@@ -14,13 +14,16 @@
  */
 
 /** RevenueCat iOS API key — get from app.revenuecat.com → Project → API Keys → Apple App Store */
-export const RC_API_KEY_IOS = 'test_cLNGghHmoZOxLlNrYmJmGrtXhPD';
+export const RC_API_KEY_IOS = 'appl_rnnQuRaaojVilnLvjbjhMqYRkch';
 
 /** RevenueCat Android API key — get from app.revenuecat.com → Project → API Keys → Google Play Store */
 export const RC_API_KEY_ANDROID = 'goog_REPLACE_WITH_YOUR_ANDROID_KEY';
 
 /** Must match the Entitlement identifier you created in RevenueCat (step 4 above) */
 export const ENTITLEMENT_ID = 'pro';
+
+/** Maximum verses a free user can add. Disciple users have no limit. */
+export const FREE_VERSE_LIMIT = 15;
 
 // ── Dev testing ───────────────────────────────────────────────────────────────
 /**

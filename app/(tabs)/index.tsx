@@ -125,10 +125,7 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.appName}>{Strings.appName}</Text>
-            <Text style={styles.tagline}>{Strings.tagline}</Text>
-          </View>
+          <Text style={styles.wordmark}>{Strings.appName}</Text>
           <TouchableOpacity
             style={styles.settingsButton}
             onPress={() => router.push('/settings')}
@@ -247,35 +244,23 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerLeft: {
-    flex: 1,
+  wordmark: {
+    fontSize: FontSizes.xl,
+    fontFamily: Fonts.wordmark,
+    color: Colors.accent,
+    letterSpacing: 2,
   },
   settingsButton: {
     width: TouchTarget,
     height: TouchTarget,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: Spacing.xs,
-  },
-  appName: {
-    fontSize: FontSizes.display,
-    fontWeight: FontWeights.bold,
-    color: Colors.text,
-    fontFamily: Fonts.serif,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-    fontFamily: Fonts.sans,
-    marginTop: Spacing.xxs,
-    fontStyle: 'italic',
   },
 
   // Due Card

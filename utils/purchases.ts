@@ -11,16 +11,20 @@ import Purchases, {
   type PurchasesOffering,
   type PurchasesPackage,
 } from 'react-native-purchases';
-import { presentCustomerCenter as rcPresentCustomerCenter } from 'react-native-purchases-ui';
+import RevenueCatUI from 'react-native-purchases-ui';
 import { RC_API_KEY_IOS, RC_API_KEY_ANDROID, ENTITLEMENT_ID, DEBUG_FORCE_PRO } from '@/constants/pro';
 
 export type { PurchasesOffering, PurchasesPackage };
 
 /** Initialize the RevenueCat SDK. Call once at app startup. */
 export async function initializePurchases(): Promise<void> {
-  const apiKey = Platform.OS === 'ios' ? RC_API_KEY_IOS : RC_API_KEY_ANDROID;
-  Purchases.setLogLevel(LOG_LEVEL.ERROR);
-  Purchases.configure({ apiKey });
+  try {
+    const apiKey = Platform.OS === 'ios' ? RC_API_KEY_IOS : RC_API_KEY_ANDROID;
+    Purchases.setLogLevel(LOG_LEVEL.ERROR);
+    Purchases.configure({ apiKey });
+  } catch {
+    // SDK init failure (e.g. invalid API key in dev) — app continues without IAP
+  }
 }
 
 /** Returns true if the user has an active Pro entitlement. */
@@ -81,7 +85,7 @@ export type RestoreResult =
 
 /** Open RevenueCat's Customer Center (subscription management UI). */
 export async function presentCustomerCenter(): Promise<void> {
-  await rcPresentCustomerCenter();
+  await RevenueCatUI.presentCustomerCenter();
 }
 
 /** Restore purchases made on another device or after reinstall. */

@@ -46,6 +46,8 @@ export const Fonts = {
   serif: 'Georgia',
   /** System sans-serif for UI elements */
   sans: 'System',
+  /** Display font for the app wordmark — Playfair Display Bold */
+  wordmark: 'PlayfairDisplay_700Bold',
 } as const;
 
 export const FontSizes = {
