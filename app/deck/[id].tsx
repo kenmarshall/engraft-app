@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -27,6 +28,7 @@ import {
 import { Strings } from '@/constants/strings';
 import {
   getDeckCards,
+  getDeckSortedByDue,
   loadDecks,
   deleteDeck,
   renameDeck,
@@ -39,6 +41,7 @@ import { MasteryBadge } from '@/components/MasteryBadge';
 
 export default function DeckDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const isAll = id === 'all';
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -49,17 +52,24 @@ export default function DeckDetailScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      const [decks, deckCards] = await Promise.all([
-        loadDecks(),
-        getDeckCards(id),
-      ]);
-      const found = decks.find((d) => d.id === id) ?? null;
-      setDeck(found);
-      setCards(deckCards.sort((a, b) =>
-        new Date(a.schedule.dueDate).getTime() - new Date(b.schedule.dueDate).getTime(),
-      ));
-      if (found) {
-        navigation.setOptions({ title: found.name });
+      if (id === 'all') {
+        const allCards = await getDeckSortedByDue();
+        setDeck({ id: 'all', name: Strings.deck.allVerses, createdAt: '', cardIds: [] });
+        setCards(allCards);
+        navigation.setOptions({ title: Strings.deck.allVerses });
+      } else {
+        const [decks, deckCards] = await Promise.all([
+          loadDecks(),
+          getDeckCards(id),
+        ]);
+        const found = decks.find((d) => d.id === id) ?? null;
+        setDeck(found);
+        setCards(deckCards.sort((a, b) =>
+          new Date(a.schedule.dueDate).getTime() - new Date(b.schedule.dueDate).getTime(),
+        ));
+        if (found) {
+          navigation.setOptions({ title: found.name });
+        }
       }
     } finally {
       setLoading(false);
@@ -124,19 +134,22 @@ export default function DeckDetailScreen() {
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerLeft}>
           <Text style={styles.title}>{deck.name}</Text>
           <Text style={styles.subtitle}>{Strings.deck.totalVerses(cards.length)}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={handleDelete}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel={Strings.deck.deleteDeck}
-        >
-          <Text style={styles.deleteButtonText}>{Strings.deck.deleteDeck}</Text>
-        </TouchableOpacity>
+        {!isAll && (
+          <TouchableOpacity
+            style={styles.addVerseButton}
+            onPress={() => router.push(`/(tabs)/add?deckId=${id}`)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={Strings.deck.emptyAction}
+          >
+            <Ionicons name="add" size={16} color={Colors.accent} />
+            <Text style={styles.addVerseButtonText}>{Strings.deck.emptyAction}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {isEmpty ? (
@@ -145,7 +158,7 @@ export default function DeckDetailScreen() {
           <Text style={styles.emptyBody}>{Strings.deck.emptyDeckBody}</Text>
           <TouchableOpacity
             style={styles.emptyAction}
-            onPress={() => router.push('/(tabs)/add')}
+            onPress={() => router.push(isAll ? '/(tabs)/add' : `/(tabs)/add?deckId=${id}`)}
             activeOpacity={0.8}
             accessibilityRole="button"
           >
@@ -171,6 +184,18 @@ export default function DeckDetailScreen() {
               onPress={() => router.push(`/verse/${item.id}`)}
             />
           )}
+          ListFooterComponent={!isAll ? (
+            <TouchableOpacity
+              style={styles.deleteRow}
+              onPress={handleDelete}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={Strings.deck.deleteDeck}
+            >
+              <Ionicons name="trash-outline" size={18} color={Colors.destructive} />
+              <Text style={styles.deleteRowText}>{Strings.deck.deleteDeck}</Text>
+            </TouchableOpacity>
+          ) : null}
         />
       )}
     </SafeAreaView>
@@ -248,6 +273,27 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
+  headerLeft: {
+    flex: 1,
+  },
+  addVerseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radii.full,
+    borderWidth: 1.5,
+    borderColor: Colors.accent,
+    minHeight: TouchTarget,
+    justifyContent: 'center',
+  },
+  addVerseButtonText: {
+    fontSize: FontSizes.sm,
+    fontWeight: FontWeights.semibold,
+    color: Colors.accent,
+    fontFamily: Fonts.sans,
+  },
   title: {
     fontSize: FontSizes.xxl,
     fontWeight: FontWeights.bold,
@@ -260,16 +306,21 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans,
     marginTop: Spacing.xxs,
   },
-  deleteButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    minHeight: TouchTarget,
+  deleteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.lg,
+    paddingVertical: Spacing.md,
+    minHeight: TouchTarget,
   },
-  deleteButtonText: {
-    fontSize: FontSizes.sm,
+  deleteRowText: {
+    fontSize: FontSizes.base,
     color: Colors.destructive,
     fontFamily: Fonts.sans,
+    fontWeight: FontWeights.medium,
   },
 
   // List

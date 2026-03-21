@@ -6,6 +6,7 @@
  */
 
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import Purchases, {
   LOG_LEVEL,
   type PurchasesOffering,
@@ -18,6 +19,8 @@ export type { PurchasesOffering, PurchasesPackage };
 
 /** Initialize the RevenueCat SDK. Call once at app startup. */
 export async function initializePurchases(): Promise<void> {
+  // Native store is not available in Expo Go — skip to avoid console errors
+  if (Constants.appOwnership === 'expo') return;
   try {
     const apiKey = Platform.OS === 'ios' ? RC_API_KEY_IOS : RC_API_KEY_ANDROID;
     Purchases.setLogLevel(LOG_LEVEL.ERROR);
@@ -85,6 +88,8 @@ export type RestoreResult =
 
 /** Open RevenueCat's Customer Center (subscription management UI). */
 export async function presentCustomerCenter(): Promise<void> {
+  // Not available in Expo Go or when using the dev Pro override — requires a real subscription
+  if (Constants.appOwnership === 'expo' || (__DEV__ && DEBUG_FORCE_PRO)) return;
   await RevenueCatUI.presentCustomerCenter();
 }
 

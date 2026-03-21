@@ -83,7 +83,9 @@ const BOOK_ALIASES: Record<string, string> = {
   '2ki': '2 Kings',
   '2kings': '2 Kings',
   '1chr': '1 Chronicles',
+  '1chronicles': '1 Chronicles',
   '2chr': '2 Chronicles',
+  '2chronicles': '2 Chronicles',
   ezra: 'Ezra',
   neh: 'Nehemiah',
   nehemiah: 'Nehemiah',
@@ -155,9 +157,13 @@ const BOOK_ALIASES: Record<string, string> = {
   col: 'Colossians',
   colossians: 'Colossians',
   '1thess': '1 Thessalonians',
+  '1thessalonians': '1 Thessalonians',
   '2thess': '2 Thessalonians',
+  '2thessalonians': '2 Thessalonians',
   '1tim': '1 Timothy',
+  '1timothy': '1 Timothy',
   '2tim': '2 Timothy',
+  '2timothy': '2 Timothy',
   titus: 'Titus',
   phlm: 'Philemon',
   philemon: 'Philemon',
@@ -369,15 +375,12 @@ export function lookupRange(
 
 /**
  * Return up to `limit` book names that match the query.
- * Matches prefix first, then "contains", case-insensitively.
  */
 export function suggestBooks(query: string, limit = 6): string[] {
   const q = query.toLowerCase().trim();
   if (!q) return [];
 
-  const prefixMatches = BOOK_NAMES.filter((b) =>
-    b.toLowerCase().startsWith(q),
-  );
+  const prefixMatches = BOOK_NAMES.filter((b) => b.toLowerCase().startsWith(q));
   const containsMatches = BOOK_NAMES.filter(
     (b) => !b.toLowerCase().startsWith(q) && b.toLowerCase().includes(q),
   );

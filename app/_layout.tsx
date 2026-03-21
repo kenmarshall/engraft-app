@@ -79,7 +79,7 @@ const headerStyles = StyleSheet.create({
   },
 });
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export const unstable_settings = {
   anchor: '(tabs)',

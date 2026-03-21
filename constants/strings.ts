@@ -42,14 +42,14 @@ export const Strings = {
     hard: 'Hard',
     good: 'Good',
     easy: 'Easy',
-    againHint: 'Complete blank',
-    hardHint: '< 1 day',
+    againHint: 'Forgot',
+    hardHint: 'Tomorrow',
     goodHint: 'A few days',
-    easyHint: 'Long interval',
+    easyHint: 'Weeks away',
     sessionComplete: 'Session Complete',
     sessionCompleteBody: 'Thou hast reviewed all due cards.',
     sessionCompleteAction: 'Back to Home',
-    cardProgress: (current: number, total: number) => `${current} / ${total}`,
+    cardProgress: (current: number, total: number) => `Card ${current} of ${total}`,
     emptyTitle: 'Nothing to review',
     emptyBody: 'All cards are current. Add new verses or check back tomorrow.',
     emptyAction: 'Add a Verse',
@@ -86,7 +86,7 @@ export const Strings = {
 
   // ── Deck Screen ───────────────────────────────────────────────────────────
   deck: {
-    title: 'My Deck',
+    title: 'My Decks',
     emptyTitle: 'Thy deck is empty',
     emptyBody:
       'Add your first verse and begin the practice of hiding God\'s Word in your heart.',
@@ -94,6 +94,7 @@ export const Strings = {
     totalVerses: (count: number) => (count === 1 ? '1 verse' : `${count} verses`),
     nextReview: 'Next review:',
     dueNow: 'Due now',
+    dueCount: (n: number) => (n === 1 ? '1 due' : `${n} due`),
     dueToday: 'Due today',
     sortLabel: 'Sort',
     allVerses: 'All Verses',
@@ -124,6 +125,7 @@ export const Strings = {
     feature1: 'Unlimited verses',
     feature2: 'Multiple named decks',
     feature3: 'Add verses by range or chapter',
+    feature4: 'Hard & Auto cloze difficulty',
 
     // Verse limit
     verseLimitTitle: 'Verse Limit Reached',
@@ -166,14 +168,15 @@ export const Strings = {
     deleteConfirm: 'Remove',
     deleteCancel: 'Cancel',
     reviewNow: 'Review Now',
+    learnNow: 'Learn Now',
     notFound: 'Verse not found in your deck.',
   },
 
   // ── Mastery Labels ────────────────────────────────────────────────────────
   mastery: {
-    new: 'New',
-    learning: 'Learning',
-    mature: 'Mature',
+    new: 'Learning',
+    learning: 'Reviewing',
+    mature: 'Mastered',
   },
 
   // ── Onboarding / Welcome ──────────────────────────────────────────────────
@@ -202,9 +205,11 @@ export const Strings = {
     difficultyEasy: 'Easy',
     difficultyMedium: 'Medium',
     difficultyHard: 'Hard',
-    difficultyEasyHint: '~20% of words hidden',
-    difficultyMediumHint: '~35% of words hidden',
-    difficultyHardHint: '~50% of words hidden',
+    difficultyAuto: 'Auto',
+    difficultyEasyHint: '~25% of words hidden',
+    difficultyMediumHint: '~50% of words hidden',
+    difficultyHardHint: 'All eligible words hidden',
+    difficultyAutoHint: 'Adapts to your mastery level',
 
     // Account
     upgradePro: 'Become a Disciple',
@@ -216,18 +221,55 @@ export const Strings = {
     // Help
     howToUse: 'How to Use Engraft',
     helpStep1Title: '1. Add a verse',
-    helpStep1Body: 'Go to the Add tab and type a reference like "John 3:16". Preview the text, then tap "Add to Memory".',
-    helpStep2Title: '2. Review daily',
-    helpStep2Body: 'Open the Home tab and tap "Start Review". Before you begin each card, say the reference aloud (e.g. "John 3:16"). Then fill in the blanks from memory — tap each blank to reveal it one at a time. After reciting the full text, say the reference aloud again. Ending with the reference locks it to the verse so you never forget where it comes from.',
-    helpStep3Title: '3. Rate your recall',
-    helpStep3Body: '"Again" if you struggled, "Hard" for hesitation, "Good" for solid recall, "Easy" if it felt effortless. Cards space out as mastery grows.',
-    helpStep4Title: '4. Track your progress',
-    helpStep4Body: 'The Deck tab shows every verse with its mastery level — New, Learning, or Mature — and its next review date.',
+    helpStep1Body: 'Go to the Add tab and type a reference like "John 3:16". Preview the text, then tap "Add to Memory". Disciple users can also add a full chapter or range — try "Psalms 23" or "John 3:1-5".',
+    helpStep2Title: '2. Learn new verses',
+    helpStep2Body: 'New verses open in a Learning session (Disciple). Three progressive passes gradually blank more words until you\'re reciting the full verse from memory. At the end, tap "Review Tomorrow" to schedule the card for cloze review, or "Learn Again" to repeat the session.',
+    helpStep3Title: '3. Review scheduled cards',
+    helpStep3Body: 'Cards you\'ve already learned come back as cloze cards on their scheduled day. Say the reference aloud, fill in the blanks from memory, then rate your recall: "Again" if you forgot, "Hard" for hesitation, "Good" for solid recall, "Easy" if effortless. Cards space out automatically as mastery grows.',
+    helpStep4Title: '4. Say the reference',
+    helpStep4Body: 'Before each card, say the reference aloud — e.g. "John 3:16". Say it again when you finish. Ending on the reference locks the verse to its location so you never forget where it comes from.',
+    helpStep5Title: '5. Track your progress',
+    helpStep5Body: 'The Deck tab shows every verse with its mastery — Learning, Reviewing, or Mastered — and next review date. Tap any verse to see its full stats or review it directly.',
+
+    // Contact
+    contactUs: 'Contact Us',
+    contactUsSub: 'Report bugs, share feedback, or suggest features',
 
     // About
     privacyPolicy: 'Privacy Policy',
     version: (v: string) => `Version ${v}`,
     appDescription: 'Engraft helps you deeply internalize KJV scripture through spaced repetition and cloze deletion.',
+  },
+
+  // ── Learning Mode ─────────────────────────────────────────────────────────
+  learning: {
+    title: 'Learning',
+    passOf: (current: number, total: number) => `Pass ${current} of ${total}`,
+    upsellHint: 'Disciple includes guided Learning mode — step-by-step memorization for new verses.',
+    upsellCta: 'Try Disciple',
+    instruction: 'Say aloud: reference → verse → reference',
+    continueButton: 'Next',
+    nextPassButton: 'Next',
+    revealAll: 'Reveal All',
+    referenceBlankLabel: 'Scripture reference — tap to reveal',
+    exitButton: 'Exit',
+    reviewTomorrow: 'Review Tomorrow',
+    learnAgain: 'Learn Again',
+  },
+
+  // ── Contact ───────────────────────────────────────────────────────────────
+  contact: {
+    title: 'Contact Us',
+    categoryLabel: 'What is this about?',
+    categoryBug: 'Bug Report',
+    categoryFeedback: 'Feedback',
+    categorySuggestion: 'Suggestion',
+    messageLabel: 'Message',
+    messagePlaceholder: "Tell us what's on your mind…",
+    submit: 'Send Email',
+    noMailApp: 'No Mail App Found',
+    noMailAppBody: 'Please set up a mail app on your device, then try again.',
+    emailSubject: (category: string) => `[Engraft] ${category}`,
   },
 
   // ── Common ────────────────────────────────────────────────────────────────

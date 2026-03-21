@@ -6,7 +6,7 @@
  * preview the text, and add it to their deck.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 
 import {
   Colors, FontSizes, FontWeights, Fonts,
@@ -36,7 +37,7 @@ import {
   type KJVVerse,
 } from '@/utils/bible';
 import { BookSuggestions } from '@/components/BookSuggestions';
-import { addCard, isInDeck, loadDeck, makeCardId, makeRangeCardId, addCardToDeck, loadDecks, type Deck } from '@/utils/storage';
+import { addCard, isInDeck, loadDeck, makeCardId, addCardToDeck, loadDecks, type Deck } from '@/utils/storage';
 import { FREE_VERSE_LIMIT } from '@/constants/pro';
 import { useProStatus } from '@/contexts/ProContext';
 
@@ -53,6 +54,7 @@ type SearchState =
 
 export default function AddVerseScreen() {
   const { isPro, openPaywall } = useProStatus();
+  const { deckId: paramDeckId } = useLocalSearchParams<{ deckId?: string }>();
   const [query, setQuery] = useState('');
   const [searchState, setSearchState] = useState<SearchState>('idle');
   const [foundVerse, setFoundVerse] = useState<KJVVerse | null>(null);
@@ -67,6 +69,15 @@ export default function AddVerseScreen() {
       loadDecks().then(setNamedDecks).catch(() => {});
     }
   }, [isPro]);
+
+  // Pre-select deck when navigating from a named deck context
+  useFocusEffect(
+    useCallback(() => {
+      if (paramDeckId) {
+        setSelectedDeckId(paramDeckId);
+      }
+    }, [paramDeckId]),
+  );
 
   const handleSearch = async () => {
     const trimmed = query.trim();
@@ -148,30 +159,27 @@ export default function AddVerseScreen() {
         return;
       }
     }
-    const first = foundVerses[0];
-    const last = foundVerses[foundVerses.length - 1];
-    const passageId = makeRangeCardId(first.book, first.chapter, first.verse, last.verse);
-    const passageText = foundVerses.map((v) => v.text).join(' ');
 
-    const alreadyIn = await isInDeck(passageId);
-    const count = alreadyIn ? 0 : 1;
-
-    if (!alreadyIn) {
-      await addCard({
-        id: passageId,
-        book: first.book,
-        chapter: first.chapter,
-        verse: first.verse,
-        endVerse: last.verse,
-        text: passageText,
-      });
+    let added = 0;
+    for (const v of foundVerses) {
+      const cardId = makeCardId(v.book, v.chapter, v.verse);
+      const alreadyIn = await isInDeck(cardId);
+      if (!alreadyIn) {
+        await addCard({
+          id: cardId,
+          book: v.book,
+          chapter: v.chapter,
+          verse: v.verse,
+          text: v.text,
+        });
+        added++;
+      }
+      if (selectedDeckId) {
+        await addCardToDeck(selectedDeckId, cardId);
+      }
     }
 
-    if (selectedDeckId) {
-      await addCardToDeck(selectedDeckId, passageId);
-    }
-
-    setAddedCount(count);
+    setAddedCount(added);
     setSearchState('addedRange');
   };
 
@@ -185,7 +193,6 @@ export default function AddVerseScreen() {
     setSearchState('idle');
     setFoundVerse(null);
     setFoundVerses([]);
-    setSelectedDeckId(null);
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
@@ -210,7 +217,14 @@ export default function AddVerseScreen() {
               ref={inputRef}
               style={styles.input}
               value={query}
-              onChangeText={setQuery}
+              onChangeText={(text) => {
+                setQuery(text);
+                if (searchState !== 'idle' && searchState !== 'searching') {
+                  setSearchState('idle');
+                  setFoundVerse(null);
+                  setFoundVerses([]);
+                }
+              }}
               placeholder={Strings.add.searchPlaceholder}
               placeholderTextColor={Colors.textTertiary}
               returnKeyType="search"

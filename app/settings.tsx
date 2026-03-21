@@ -17,7 +17,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,10 +33,11 @@ import { useProStatus } from '@/contexts/ProContext';
 
 const APP_VERSION = '1.0.0';
 
-const DIFFICULTY_OPTIONS: { value: ClozeDifficulty; label: string; hint: string }[] = [
-  { value: 'easy',   label: Strings.settings.difficultyEasy,   hint: Strings.settings.difficultyEasyHint },
-  { value: 'medium', label: Strings.settings.difficultyMedium, hint: Strings.settings.difficultyMediumHint },
-  { value: 'hard',   label: Strings.settings.difficultyHard,   hint: Strings.settings.difficultyHardHint },
+const DIFFICULTY_OPTIONS: { value: ClozeDifficulty; chipLabel: string; label: string; hint: string; proOnly?: boolean }[] = [
+  { value: 'easy',   chipLabel: 'Easy',  label: Strings.settings.difficultyEasy,   hint: Strings.settings.difficultyEasyHint },
+  { value: 'medium', chipLabel: 'Med',   label: Strings.settings.difficultyMedium, hint: Strings.settings.difficultyMediumHint },
+  { value: 'hard',   chipLabel: 'Hard',  label: Strings.settings.difficultyHard,   hint: Strings.settings.difficultyHardHint,   proOnly: true },
+  { value: 'auto',   chipLabel: 'Auto',  label: Strings.settings.difficultyAuto,   hint: Strings.settings.difficultyAutoHint,   proOnly: true },
 ];
 
 const HELP_STEPS = [
@@ -44,20 +45,24 @@ const HELP_STEPS = [
   { title: Strings.settings.helpStep2Title, body: Strings.settings.helpStep2Body },
   { title: Strings.settings.helpStep3Title, body: Strings.settings.helpStep3Body },
   { title: Strings.settings.helpStep4Title, body: Strings.settings.helpStep4Body },
+  { title: Strings.settings.helpStep5Title, body: Strings.settings.helpStep5Body },
 ];
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { isPro, openPaywall } = useProStatus();
   const [difficulty, setDifficultyState] = useState<ClozeDifficulty>('medium');
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
-      getDifficulty().then((d) => {
-        setDifficultyState(d);
+      getDifficulty(isPro ? 'auto' : 'medium').then((d) => {
+        // If free user has a Pro-only difficulty stored, fall back to medium
+        const effective = (!isPro && (d === 'hard' || d === 'auto')) ? 'medium' : d;
+        setDifficultyState(effective);
         setLoading(false);
       });
-    }, []),
+    }, [isPro]),
   );
 
   const handleDifficultyChange = async (value: ClozeDifficulty) => {
@@ -90,21 +95,30 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <Text style={styles.rowLabel}>{Strings.settings.difficultyLabel}</Text>
           <Text style={styles.rowSub}>{currentDifficulty.hint}</Text>
-          <View style={styles.difficultyRow}>
+          <View style={styles.difficultyGrid}>
             {DIFFICULTY_OPTIONS.map((opt) => {
               const selected = difficulty === opt.value;
+              const locked = opt.proOnly && !isPro;
               return (
                 <TouchableOpacity
                   key={opt.value}
-                  style={[styles.difficultyChip, selected && styles.difficultyChipSelected]}
-                  onPress={() => handleDifficultyChange(opt.value)}
+                  style={[
+                    styles.difficultyChip,
+                    selected && styles.difficultyChipSelected,
+                    locked && styles.difficultyChipLocked,
+                  ]}
+                  onPress={() => locked ? openPaywall() : handleDifficultyChange(opt.value)}
                   activeOpacity={0.7}
                   accessibilityRole="button"
-                  accessibilityLabel={opt.label}
+                  accessibilityLabel={opt.label + (locked ? ', Disciple feature' : '')}
                   accessibilityState={{ selected }}
                 >
-                  <Text style={[styles.difficultyChipText, selected && styles.difficultyChipTextSelected]}>
-                    {opt.label}
+                  <Text style={[
+                    styles.difficultyChipText,
+                    selected && styles.difficultyChipTextSelected,
+                    locked && styles.difficultyChipTextLocked,
+                  ]}>
+                    {opt.chipLabel}
                   </Text>
                 </TouchableOpacity>
               );
@@ -172,6 +186,22 @@ export default function SettingsScreen() {
 
         <View style={styles.card}>
           <Text style={styles.aboutDescription}>{Strings.settings.appDescription}</Text>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => router.push('/contact')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={Strings.settings.contactUs}
+          >
+            <View style={styles.rowTextGroup}>
+              <Text style={styles.rowLabel}>{Strings.settings.contactUs}</Text>
+              <Text style={styles.rowSub}>{Strings.settings.contactUsSub}</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
 
           <View style={styles.divider} />
 
@@ -293,28 +323,31 @@ const styles = StyleSheet.create({
   },
 
   // Difficulty selector
-  difficultyRow: {
+  difficultyGrid: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    gap: Spacing.xs,
     marginTop: Spacing.md,
   },
   difficultyChip: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: Spacing.sm,
     borderRadius: Radii.md,
     borderWidth: 1.5,
     borderColor: Colors.border,
     backgroundColor: Colors.background,
-    alignItems: 'center',
     minHeight: TouchTarget,
-    justifyContent: 'center',
   },
   difficultyChipSelected: {
     borderColor: Colors.accent,
     backgroundColor: Colors.accentLight,
   },
+  difficultyChipLocked: {
+    opacity: 0.5,
+  },
   difficultyChipText: {
-    fontSize: FontSizes.base,
+    fontSize: FontSizes.sm,
     fontFamily: Fonts.sans,
     color: Colors.textSecondary,
     fontWeight: FontWeights.medium,
@@ -322,6 +355,9 @@ const styles = StyleSheet.create({
   difficultyChipTextSelected: {
     color: Colors.accent,
     fontWeight: FontWeights.semibold,
+  },
+  difficultyChipTextLocked: {
+    color: Colors.textTertiary,
   },
 
   // Help section

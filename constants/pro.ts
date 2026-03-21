@@ -37,5 +37,8 @@ export const FREE_VERSE_LIMIT = 15;
  */
 export const DEBUG_FORCE_PRO = false;
 
-/** Public URL for the privacy policy page — hosted via GitHub Pages from /docs */
-export const PRIVACY_POLICY_URL = 'https://kenmarshall.github.io/engraft-app/privacy.html';
+/** Public URL for the privacy policy page — engraftapp.com/privacy redirects to GitHub Pages via Cloudflare */
+export const PRIVACY_POLICY_URL = 'https://engraftapp.com/privacy';
+
+/** Email address that receives contact form submissions and is listed in the privacy policy. */
+export const CONTACT_EMAIL = 'support@engraftapp.com';

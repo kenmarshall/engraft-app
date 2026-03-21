@@ -42,6 +42,7 @@ const PRO_FEATURES = [
   Strings.pro.feature1,
   Strings.pro.feature2,
   Strings.pro.feature3,
+  Strings.pro.feature4,
 ] as const;
 
 export function ProPaywall({ visible, onClose, onPurchaseSuccess }: ProPaywallProps) {

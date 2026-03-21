@@ -91,11 +91,10 @@ const STOP_WORDS = new Set([
 
 // ── Target blank rates by difficulty ──────────────────────────────────────
 
-/** Blank ratio bounds for each difficulty level. */
+/** Blank ratio bounds for easy and medium. Hard blanks all eligible words. */
 const DIFFICULTY_RATIOS = {
-  easy:   { min: 0.15, max: 0.25 },
-  medium: { min: 0.30, max: 0.40 },
-  hard:   { min: 0.45, max: 0.55 },
+  easy:   { min: 0.20, max: 0.30 },
+  medium: { min: 0.45, max: 0.55 },
 } as const;
 
 // ── Tokenizer ─────────────────────────────────────────────────────────────
@@ -148,7 +147,7 @@ function isEligible(word: string): boolean {
  *
  * @param verseText   Full verse text
  * @param seed        Optional numeric seed for deterministic selection (default: 0)
- * @param difficulty  Blank density — 'easy' (~20%), 'medium' (~35%), 'hard' (~50%). Default: 'medium'
+ * @param difficulty  Blank density: 'easy' (~25%), 'medium' (~50%), 'hard' (all eligible). Default: 'medium'
  * @returns ClozeResult with tokens and blank indices
  */
 export function generateCloze(
@@ -172,14 +171,20 @@ export function generateCloze(
     .map((t) => t.index);
 
   // Determine how many blanks to create based on difficulty
-  const { min: minRatio, max: maxRatio } = DIFFICULTY_RATIOS[difficulty];
-  const totalWords = tokens.length;
-  const targetMin = Math.ceil(totalWords * minRatio);
-  const targetMax = Math.floor(totalWords * maxRatio);
-  const targetCount = Math.min(
-    eligibleIndices.length,
-    Math.max(targetMin, Math.round((targetMin + targetMax) / 2)),
-  );
+  let targetCount: number;
+  if (difficulty === 'hard') {
+    // Hard: blank every eligible word
+    targetCount = eligibleIndices.length;
+  } else {
+    const { min: minRatio, max: maxRatio } = DIFFICULTY_RATIOS[difficulty];
+    const totalWords = tokens.length;
+    const targetMin = Math.ceil(totalWords * minRatio);
+    const targetMax = Math.floor(totalWords * maxRatio);
+    targetCount = Math.min(
+      eligibleIndices.length,
+      Math.max(targetMin, Math.round((targetMin + targetMax) / 2)),
+    );
+  }
 
   // Select which eligible tokens to blank using a deterministic shuffle
   const selected = selectIndices(eligibleIndices, targetCount, seed);
@@ -249,4 +254,41 @@ export function getBlankPlaceholder(word: string): string {
   // Use a fixed width (not exact length) to avoid giving away the answer
   const len = Math.max(3, Math.min(8, word.length));
   return '_'.repeat(len);
+}
+
+/**
+ * Returns all tokens for a verse with no blanks applied.
+ * Used for progressive learning mode where blank state is computed externally.
+ */
+export function tokenizeVerse(text: string): VerseToken[] {
+  return tokenize(text).map((t, i) => ({
+    word: t.word,
+    trailing: t.trailing,
+    isBlank: false,
+    index: i,
+  }));
+}
+
+/**
+ * Returns word token indices in blanking priority order for progressive learning.
+ * Eligible content words come first (in text order), then all remaining words
+ * (stop words, short words) in text order.
+ *
+ * This means early learning passes blank meaningful content words;
+ * later passes add stop words and function words.
+ */
+export function getProgressiveWordOrder(text: string): number[] {
+  const raw = tokenize(text);
+  const contentIndices: number[] = [];
+  const restIndices: number[] = [];
+
+  raw.forEach((t, i) => {
+    if (isEligible(t.word)) {
+      contentIndices.push(i);
+    } else {
+      restIndices.push(i);
+    }
+  });
+
+  return [...contentIndices, ...restIndices];
 }

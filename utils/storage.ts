@@ -59,8 +59,12 @@ const KEYS = {
   difficulty: 'engraft:difficulty',
 } as const;
 
-/** Cloze difficulty controls what percentage of words are blanked during review. */
-export type ClozeDifficulty = 'easy' | 'medium' | 'hard';
+/**
+ * Cloze difficulty controls what percentage of words are blanked during review.
+ * 'auto' (Disciple only) adapts based on the card's mastery level:
+ *   new → easy (~25%), learning → medium (~50%), mature → hard (100%).
+ */
+export type ClozeDifficulty = 'easy' | 'medium' | 'hard' | 'auto';
 
 // ── Deck operations ────────────────────────────────────────────────────────
 
@@ -222,15 +226,17 @@ export async function setHasSeenWelcome(): Promise<void> {
 }
 
 /**
- * Get the user's cloze difficulty preference. Defaults to 'medium'.
+ * Get the user's cloze difficulty preference.
+ * Pass a defaultValue to control what is returned when no preference is stored.
+ * Free users should pass 'medium'; Pro users should pass 'auto'.
  */
-export async function getDifficulty(): Promise<ClozeDifficulty> {
+export async function getDifficulty(defaultValue: ClozeDifficulty = 'medium'): Promise<ClozeDifficulty> {
   try {
     const value = await AsyncStorage.getItem(KEYS.difficulty);
-    if (value === 'easy' || value === 'medium' || value === 'hard') return value;
-    return 'medium';
+    if (value === 'easy' || value === 'medium' || value === 'hard' || value === 'auto') return value;
+    return defaultValue;
   } catch {
-    return 'medium';
+    return defaultValue;
   }
 }
 

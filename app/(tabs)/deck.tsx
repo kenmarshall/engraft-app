@@ -11,13 +11,15 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
   Modal,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,9 +37,7 @@ import {
   type VerseCard,
   type Deck,
 } from '@/utils/storage';
-import { formatReference, formatReferenceRange } from '@/utils/bible';
-import { getMasteryLevel, formatDueDate, isDue } from '@/utils/sm2';
-import { MasteryBadge } from '@/components/MasteryBadge';
+import { isDue } from '@/utils/sm2';
 import { useProStatus } from '@/contexts/ProContext';
 
 export default function DeckScreen() {
@@ -111,6 +111,9 @@ export default function DeckScreen() {
     );
   };
 
+  const allDueCount = cards.filter((c) => isDue(c.schedule)).length;
+  const cardMap = new Map(cards.map((c) => [c.id, c]));
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -162,9 +165,8 @@ export default function DeckScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={cards}
-          keyExtractor={(item) => item.id}
+        <ScrollView
+          style={styles.scroll}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -174,26 +176,33 @@ export default function DeckScreen() {
               tintColor={Colors.accent}
             />
           }
-          ListHeaderComponent={
-            isPro && decks.length > 0 ? (
-              <>
-                <Text style={styles.sectionLabel}>{Strings.deck.deckCount(decks.length)}</Text>
-                {decks.map((d) => (
-                  <NamedDeckRow
-                    key={d.id}
-                    deck={d}
-                    onPress={() => router.push(`/deck/${d.id}`)}
-                    onDelete={() => handleDeleteDeck(d)}
-                  />
-                ))}
-                <Text style={styles.sectionLabel}>{Strings.deck.allVerses}</Text>
-              </>
-            ) : null
-          }
-          renderItem={({ item }) => (
-            <DeckRow card={item} onPress={() => router.push(`/verse/${item.id}`)} />
-          )}
-        />
+        >
+          {/* All Verses — always present */}
+          <DeckListRow
+            name={Strings.deck.allVerses}
+            verseCount={cards.length}
+            dueCount={allDueCount}
+            onPress={() => router.push('/deck/all')}
+          />
+
+          {/* Named decks (pro) */}
+          {isPro && decks.map((d) => {
+            const dueCount = d.cardIds
+              .map((cid) => cardMap.get(cid))
+              .filter((c): c is VerseCard => c !== undefined)
+              .filter((c) => isDue(c.schedule)).length;
+            return (
+              <DeckListRow
+                key={d.id}
+                name={d.name}
+                verseCount={d.cardIds.length}
+                dueCount={dueCount}
+                onPress={() => router.push(`/deck/${d.id}`)}
+                onLongPress={() => handleDeleteDeck(d)}
+              />
+            );
+          })}
+        </ScrollView>
       )}
 
       {/* Create Deck Modal */}
@@ -204,7 +213,10 @@ export default function DeckScreen() {
         statusBarTranslucent
         onRequestClose={() => setShowCreateDeck(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>{Strings.deck.newDeck}</Text>
             <Text style={styles.inputLabel}>{Strings.deck.deckNameLabel}</Text>
@@ -238,76 +250,41 @@ export default function DeckScreen() {
               <Text style={styles.ghostButtonText}>{Strings.add.cancel}</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
 }
 
-// ── NamedDeckRow ─────────────────────────────────────────────────────────────
+// ── DeckListRow ──────────────────────────────────────────────────────────────
 
-interface NamedDeckRowProps {
-  deck: Deck;
+interface DeckListRowProps {
+  name: string;
+  verseCount: number;
+  dueCount: number;
   onPress: () => void;
-  onDelete: () => void;
+  onLongPress?: () => void;
 }
 
-function NamedDeckRow({ deck, onPress, onDelete }: NamedDeckRowProps) {
+function DeckListRow({ name, verseCount, dueCount, onPress, onLongPress }: DeckListRowProps) {
   return (
     <TouchableOpacity
-      style={styles.namedDeckRow}
+      style={styles.deckRow}
       onPress={onPress}
-      onLongPress={onDelete}
+      onLongPress={onLongPress}
       activeOpacity={0.7}
       accessibilityRole="button"
-      accessibilityLabel={deck.name}
-      accessibilityHint="Long press to delete"
+      accessibilityLabel={name}
+      accessibilityHint={onLongPress ? 'Long press to delete' : undefined}
     >
-      <Text style={styles.namedDeckName}>{deck.name}</Text>
-      <Text style={styles.namedDeckCount}>
-        {Strings.deck.totalVerses(deck.cardIds.length)}
-      </Text>
+      <View style={styles.deckRowContent}>
+        <Text style={styles.deckRowName}>{name}</Text>
+        <Text style={styles.deckRowMeta}>
+          {Strings.deck.totalVerses(verseCount)}
+          {dueCount > 0 ? `  ·  ${Strings.deck.dueCount(dueCount)}` : ''}
+        </Text>
+      </View>
       <Text style={styles.chevron}>›</Text>
-    </TouchableOpacity>
-  );
-}
-
-// ── DeckRow ─────────────────────────────────────────────────────────────────
-
-interface DeckRowProps {
-  card: VerseCard;
-  onPress: () => void;
-}
-
-function DeckRow({ card, onPress }: DeckRowProps) {
-  const mastery = getMasteryLevel(card.schedule);
-  const due = isDue(card.schedule);
-  const dueDateLabel = formatDueDate(card.schedule.dueDate);
-
-  return (
-    <TouchableOpacity
-      style={styles.row}
-      onPress={onPress}
-      activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityLabel={`${card.endVerse ? formatReferenceRange(card.book, card.chapter, card.verse, card.endVerse) : formatReference(card.book, card.chapter, card.verse)}, ${Strings.mastery[mastery]}`}
-    >
-      <View style={styles.rowLeft}>
-        <Text style={styles.rowRef}>
-          {card.endVerse
-            ? formatReferenceRange(card.book, card.chapter, card.verse, card.endVerse)
-            : formatReference(card.book, card.chapter, card.verse)}
-        </Text>
-        <Text style={styles.rowText} numberOfLines={2}>
-          {card.text}
-        </Text>
-      </View>
-      <View style={styles.rowRight}>
-        <MasteryBadge level={mastery} />
-        <Text style={[styles.rowDue, due && styles.rowDueNow]}>
-          {due ? Strings.deck.dueNow : dueDateLabel}
-        </Text>
-      </View>
     </TouchableOpacity>
   );
 }
@@ -380,51 +357,48 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // List
+  // Scroll + list
+  scroll: {
+    flex: 1,
+  },
   list: {
     paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.sm,
     paddingBottom: Spacing.xxxl,
   },
-  sectionLabel: {
-    fontSize: FontSizes.xs,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontFamily: Fonts.sans,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.sm,
-  },
 
-  // Named deck row
-  namedDeckRow: {
+  // Deck row
+  deckRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.card,
     borderRadius: Radii.md,
     paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.base,
     marginBottom: Spacing.sm,
     minHeight: TouchTarget,
     ...Shadows.card,
   },
-  namedDeckName: {
+  deckRowContent: {
     flex: 1,
+    gap: Spacing.xxs,
+  },
+  deckRowName: {
     fontSize: FontSizes.base,
     fontWeight: FontWeights.semibold,
     color: Colors.text,
     fontFamily: Fonts.sans,
   },
-  namedDeckCount: {
+  deckRowMeta: {
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     fontFamily: Fonts.sans,
-    marginRight: Spacing.sm,
   },
   chevron: {
     fontSize: FontSizes.lg,
     color: Colors.textTertiary,
     fontFamily: Fonts.sans,
+    marginLeft: Spacing.sm,
   },
 
   // Empty State
@@ -463,51 +437,6 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.base,
     fontWeight: FontWeights.semibold,
     fontFamily: Fonts.sans,
-  },
-
-  // Row
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: Colors.card,
-    borderRadius: Radii.md,
-    padding: Spacing.base,
-    marginBottom: Spacing.sm,
-    minHeight: TouchTarget,
-    ...Shadows.card,
-  },
-  rowLeft: {
-    flex: 1,
-    marginRight: Spacing.md,
-  },
-  rowRef: {
-    fontSize: FontSizes.base,
-    fontWeight: FontWeights.semibold,
-    color: Colors.text,
-    fontFamily: Fonts.sans,
-    marginBottom: Spacing.xs,
-  },
-  rowText: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-    fontFamily: Fonts.serif,
-    lineHeight: 20,
-    fontStyle: 'italic',
-  },
-  rowRight: {
-    alignItems: 'flex-end',
-    gap: Spacing.xs,
-    paddingTop: Spacing.xxs,
-  },
-  rowDue: {
-    fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
-    fontFamily: Fonts.sans,
-    marginTop: Spacing.xs,
-  },
-  rowDueNow: {
-    color: Colors.accent,
-    fontWeight: FontWeights.semibold,
   },
 
   // Modals

@@ -87,7 +87,7 @@ export default function VerseDetailScreen() {
   };
 
   const handleReviewNow = () => {
-    router.push('/(tabs)/review');
+    router.push(`/(tabs)/review?cardId=${id}`);
   };
 
   if (loading) {
@@ -169,18 +169,18 @@ export default function VerseDetailScreen() {
           {Strings.verseDetail.addedOn}: {addedDate}
         </Text>
 
-        {/* Review Now */}
-        {due && (
-          <TouchableOpacity
+        {/* Review Now / Learn Now */}
+        <TouchableOpacity
             style={styles.reviewButton}
             onPress={handleReviewNow}
             activeOpacity={0.8}
             accessibilityRole="button"
-            accessibilityLabel={Strings.verseDetail.reviewNow}
+            accessibilityLabel={mastery === 'new' ? Strings.verseDetail.learnNow : Strings.verseDetail.reviewNow}
           >
-            <Text style={styles.reviewButtonText}>{Strings.verseDetail.reviewNow}</Text>
+            <Text style={styles.reviewButtonText}>
+              {mastery === 'new' ? Strings.verseDetail.learnNow : Strings.verseDetail.reviewNow}
+            </Text>
           </TouchableOpacity>
-        )}
 
         {/* Delete */}
         <TouchableOpacity

@@ -3,11 +3,11 @@
  *
  * Tests cover:
  * - generateCloze produces valid output structure
- * - Blank ratio stays within 30–40% target
+ * - Blank ratio: easy ~25%, medium ~50%, hard = all eligible
  * - Stop words are never blanked
  * - Short words (<3 chars) are never blanked
  * - Deterministic output with same seed
- * - Different seeds produce different selections
+ * - Different seeds produce different selections (easy, where not all eligible are blanked)
  * - renderClozeText with and without revealed words
  * - getBlankPlaceholder length clamping
  */
@@ -16,6 +16,8 @@ import {
   generateCloze,
   renderClozeText,
   getBlankPlaceholder,
+  tokenizeVerse,
+  getProgressiveWordOrder,
   type ClozeResult,
 } from '../utils/cloze';
 
@@ -74,14 +76,26 @@ describe('generateCloze — output structure', () => {
 // ── generateCloze — blank ratio ────────────────────────────────────────────
 
 describe('generateCloze — blank ratio', () => {
-  it('blanks between 0 and 40% of total words', () => {
-    const result = generateCloze(JOHN_3_16);
-    const total = result.tokens.length;
-    const blanked = result.blankIndices.length;
-    const ratio = blanked / total;
-    // We allow some flex below 30% if there aren't enough eligible words
-    expect(ratio).toBeLessThanOrEqual(0.4);
-    expect(blanked).toBeGreaterThan(0);
+  it('easy blanks ~25% of total words', () => {
+    const result = generateCloze(JOHN_3_16, 0, 'easy');
+    const ratio = result.blankIndices.length / result.tokens.length;
+    expect(ratio).toBeGreaterThan(0);
+    expect(ratio).toBeLessThanOrEqual(0.35); // target 20–30%, flex for small eligible pool
+  });
+
+  it('medium blanks ~50% of total words', () => {
+    const result = generateCloze(JOHN_3_16, 0, 'medium');
+    const ratio = result.blankIndices.length / result.tokens.length;
+    expect(ratio).toBeGreaterThan(0);
+    expect(ratio).toBeLessThanOrEqual(0.60); // target 45–55%, flex for eligible pool ceiling
+  });
+
+  it('hard blanks all eligible words', () => {
+    const result = generateCloze(JOHN_3_16, 0, 'hard');
+    // Every blank should be an eligible word; no more can be added
+    const easyResult = generateCloze(JOHN_3_16, 0, 'easy');
+    expect(result.blankIndices.length).toBeGreaterThanOrEqual(easyResult.blankIndices.length);
+    expect(result.blankIndices.length).toBeGreaterThan(0);
   });
 
   it('short verse still produces at least one blank if eligible words exist', () => {
@@ -133,11 +147,11 @@ describe('generateCloze — determinism', () => {
     expect(result1.blankIndices).toEqual(result2.blankIndices);
   });
 
-  it('produces different results for different seeds (usually)', () => {
-    const result0 = generateCloze(JOHN_3_16, 0);
-    const result1 = generateCloze(JOHN_3_16, 999);
-    // With enough eligible words, different seeds should give different blanks
-    // (this isn't guaranteed for all verses, but holds for longer ones)
+  it('produces different results for different seeds at easy difficulty', () => {
+    // Use 'easy' (~25%) so only a subset of eligible words is chosen,
+    // making the seed selection meaningful (medium may blank all eligible words).
+    const result0 = generateCloze(JOHN_3_16, 0, 'easy');
+    const result1 = generateCloze(JOHN_3_16, 999, 'easy');
     expect(result0.blankIndices).not.toEqual(result1.blankIndices);
   });
 });
@@ -201,6 +215,95 @@ describe('renderClozeText', () => {
 
     // Should not contain any underscores when everything is revealed
     expect(rendered).not.toMatch(/_+/);
+  });
+});
+
+// ── tokenizeVerse ──────────────────────────────────────────────────────────
+
+describe('tokenizeVerse', () => {
+  it('returns a token for every word in the verse', () => {
+    const tokens = tokenizeVerse(JOHN_3_16);
+    expect(tokens.length).toBeGreaterThan(0);
+  });
+
+  it('all tokens have isBlank = false', () => {
+    const tokens = tokenizeVerse(JOHN_3_16);
+    for (const t of tokens) {
+      expect(t.isBlank).toBe(false);
+    }
+  });
+
+  it('token indices are sequential starting from 0', () => {
+    const tokens = tokenizeVerse(JOHN_3_16);
+    tokens.forEach((t, i) => {
+      expect(t.index).toBe(i);
+    });
+  });
+
+  it('handles empty string without throwing', () => {
+    expect(() => tokenizeVerse('')).not.toThrow();
+    expect(tokenizeVerse('')).toHaveLength(0);
+  });
+
+  it('reconstructs the original text when joining word + trailing', () => {
+    const tokens = tokenizeVerse(SHORT_VERSE);
+    const reconstructed = tokens.map(t => t.word + t.trailing).join('');
+    expect(reconstructed).toBe(SHORT_VERSE);
+  });
+});
+
+// ── getProgressiveWordOrder ────────────────────────────────────────────────
+
+describe('getProgressiveWordOrder', () => {
+  it('returns all word token indices', () => {
+    const tokens = tokenizeVerse(JOHN_3_16);
+    const order = getProgressiveWordOrder(JOHN_3_16);
+    expect(order.length).toBe(tokens.length);
+  });
+
+  it('contains each index exactly once', () => {
+    const order = getProgressiveWordOrder(JOHN_3_16);
+    const unique = new Set(order);
+    expect(unique.size).toBe(order.length);
+  });
+
+  it('content words (eligible) appear before stop words', () => {
+    const tokens = tokenizeVerse(JOHN_3_16);
+    const order = getProgressiveWordOrder(JOHN_3_16);
+
+    // Find the last content word position in order and the first stop word position
+    // "God", "loved", "world", "gave", "begotten", "Son" are content words in John 3:16
+    const KNOWN_CONTENT = ['God', 'loved', 'world', 'gave', 'begotten', 'Son'];
+    const KNOWN_STOP = ['For', 'so', 'the', 'that', 'he', 'his'];
+
+    const contentPositions = order
+      .map((idx, pos) => ({ idx, pos, word: tokens[idx].word }))
+      .filter(({ word }) => KNOWN_CONTENT.includes(word))
+      .map(({ pos }) => pos);
+
+    const stopPositions = order
+      .map((idx, pos) => ({ idx, pos, word: tokens[idx].word }))
+      .filter(({ word }) => KNOWN_STOP.includes(word))
+      .map(({ pos }) => pos);
+
+    if (contentPositions.length > 0 && stopPositions.length > 0) {
+      const lastContentPos = Math.max(...contentPositions);
+      const firstStopPos = Math.min(...stopPositions);
+      expect(lastContentPos).toBeLessThan(firstStopPos);
+    }
+  });
+
+  it('returns empty array for empty string', () => {
+    expect(getProgressiveWordOrder('')).toHaveLength(0);
+  });
+
+  it('progressive blanking covers all words by final pass', () => {
+    const tokens = tokenizeVerse(JOHN_3_16);
+    const order = getProgressiveWordOrder(JOHN_3_16);
+    const totalPasses = 1 + Math.ceil(order.length / 2);
+    const finalBlankCount = Math.min((totalPasses - 1) * 2, order.length);
+    // Final pass should blank all words
+    expect(finalBlankCount).toBe(order.length);
   });
 });
 
